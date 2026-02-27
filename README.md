@@ -2,6 +2,12 @@
 
 Professional Perplexity AI terminal client with real-time streaming, session management, and cost tracking.
 
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Version](https://img.shields.io/badge/Version-1.1.0-blue.svg)
+![Platform](https://img.shields.io/badge/Platform-Linux-yellow.svg)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB.svg?logo=python&logoColor=white)
+![Perplexity](https://img.shields.io/badge/Perplexity_AI-API-1a1a2e.svg)
+
 ## Features
 
 - **Real-time streaming** — responses render as Markdown mid-stream
@@ -17,7 +23,7 @@ Professional Perplexity AI terminal client with real-time streaming, session man
 ## Quick Start
 
 ```bash
-git clone https://github.com/EvilNull/pplx-chat.git
+git clone https://github.com/Evil-Null/pplx-chat.git
 cd pplx-chat
 chmod +x install.sh
 ./install.sh

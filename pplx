@@ -1,0 +1,4 @@
+#!/bin/bash
+# PPLX Chat — Perplexity AI Terminal Client
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+cd "$SCRIPT_DIR" && source .venv/bin/activate && python -m pplx_chat "$@"

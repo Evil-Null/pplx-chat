@@ -1,0 +1,30 @@
+# PPLX Chat Configuration
+# Copy to ~/.config/pplx-chat/config.yaml to customize
+
+# Default model: sonar, sonar-pro, sonar-reasoning-pro, sonar-deep-research
+default_model: sonar
+
+# Generation parameters
+temperature: 0.2
+max_tokens: 4096
+top_p: 0.9
+
+# Search settings
+search_mode: web              # web, academic, sec
+search_context_size: medium   # low, medium, high
+return_citations: true
+return_related_questions: true
+return_images: false
+
+# System prompt
+system_prompt: "Be helpful, accurate, and concise. Provide sources when possible."
+
+# UI preferences
+show_cost: true
+show_citations: true
+show_related: true
+
+# Paths (defaults shown)
+# db_path: ~/.local/share/pplx-chat/history.db
+# log_path: ~/.local/share/pplx-chat/pplx.log
+# export_dir: ~/Desktop

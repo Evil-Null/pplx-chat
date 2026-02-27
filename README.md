@@ -8,6 +8,8 @@ Professional Perplexity AI terminal client with real-time streaming, session man
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB.svg?logo=python&logoColor=white)
 ![Perplexity](https://img.shields.io/badge/Perplexity_AI-API-1a1a2e.svg)
 
+![PPLX Chat Screenshot](assets/screenshot.png)
+
 ## Features
 
 - **Real-time streaming** — responses render as Markdown mid-stream

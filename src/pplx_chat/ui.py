@@ -1,4 +1,4 @@
-from rich.console import Console, Group
+from rich.console import Group
 from rich.panel import Panel
 from rich.markdown import Markdown
 from rich.table import Table

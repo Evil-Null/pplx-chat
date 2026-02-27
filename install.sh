@@ -3,7 +3,7 @@ set -e
 
 # ═══════════════════════════════════════════════════════════════
 #  PPLX Chat — Installer
-#  Professional Perplexity AI Terminal Client
+#  Professional Perplexity AI Terminal Client v1.2
 # ═══════════════════════════════════════════════════════════════
 
 INSTALL_DIR="$HOME/Desktop/pplx-chat"
@@ -12,7 +12,7 @@ SYMLINK_PATH="$HOME/.local/bin/pplx"
 echo ""
 echo "  ╔═══════════════════════════════════════╗"
 echo "  ║        PPLX Chat — Installer          ║"
-echo "  ║   Perplexity AI Terminal Client v1.1   ║"
+echo "  ║   Perplexity AI Terminal Client v1.2   ║"
 echo "  ╚═══════════════════════════════════════╝"
 echo ""
 
@@ -55,7 +55,7 @@ echo "  [..] Installing dependencies..."
 source "$INSTALL_DIR/.venv/bin/activate"
 pip install --upgrade pip --quiet 2>/dev/null
 pip install -e "$INSTALL_DIR" --quiet 2>&1 | tail -1
-echo "  [OK] All 9 dependencies installed"
+echo "  [OK] All 8 dependencies installed"
 
 # ─── Setup .env if needed ───
 if [ ! -f "$INSTALL_DIR/.env" ]; then

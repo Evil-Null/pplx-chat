@@ -3,7 +3,7 @@
 Professional Perplexity AI terminal client with real-time streaming, session management, and cost tracking.
 
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
-![Version](https://img.shields.io/badge/Version-1.1.0-blue.svg)
+![Version](https://img.shields.io/badge/Version-1.2.0-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Linux-yellow.svg)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB.svg?logo=python&logoColor=white)
 ![Perplexity](https://img.shields.io/badge/Perplexity_AI-API-1a1a2e.svg)
@@ -15,7 +15,8 @@ Professional Perplexity AI terminal client with real-time streaming, session man
 - **Real-time streaming** — responses render as Markdown mid-stream
 - **4 models** — sonar, sonar-pro, sonar-reasoning-pro, sonar-deep-research
 - **Session persistence** — SQLite with full conversation history
-- **15 slash commands** — `/help`, `/model`, `/save`, `/load`, `/export`, and more
+- **Inline mode** — `pplx -q "your question"` for one-shot queries
+- **18 slash commands** — `/help`, `/model`, `/save`, `/load`, `/export`, and more
 - **Citations & related questions** — displayed inline from Perplexity search
 - **Cost tracking** — per-response and per-session token/cost totals
 - **Export** — Markdown or JSON
@@ -41,6 +42,21 @@ cp .env.example .env
 # Edit .env with your Perplexity API key
 pplx
 ```
+
+## Inline Mode
+
+Ask a question without entering the interactive shell:
+
+```bash
+pplx -q "What is quantum computing?"
+pplx -q "Python vs Rust" -m sonar-pro
+```
+
+| Flag | Description |
+|------|-------------|
+| `-q`, `--question` | Ask a question and exit |
+| `-m`, `--model` | Model to use |
+| `-v`, `--version` | Show version |
 
 ## Requirements
 
@@ -87,6 +103,9 @@ show_citations: true
 | `/search <option>` | | Set search filters |
 | `/system <prompt>` | | Change system prompt |
 | `/info` | | Show current settings |
+| `/temp [value]` | | Set temperature (0.0-2.0) |
+| `/top_p [value]` | | Set top-p sampling (0.0-1.0) |
+| `/maxtokens [value]` | | Set max output tokens |
 | `/clear` | `/c` | Clear conversation |
 | `/exit` | `/q` | Exit |
 
@@ -97,7 +116,7 @@ show_citations: true
 | `Tab` | Auto-complete commands |
 | `Ctrl+R` | Search input history |
 | `Ctrl+D` | Exit |
-| `Ctrl+C` | Cancel current input |
+| `Ctrl+C` | Cancel current input / stop streaming |
 | `Alt+Enter` | Newline in input |
 
 ## Architecture

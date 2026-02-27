@@ -1,14 +1,15 @@
 import logging
+
 from rich.console import Console
 
 from .config import load_config, MODELS
 from .api import PerplexityClient, APIError, AuthenticationError, RateLimitError
-from .streaming import StreamController
+from .streaming import StreamController, StreamCancelled
 from .db import Database
 from .ui import UIRenderer
 from .prompt import create_prompt_session, get_input
 from .commands import find_command, COMMANDS
-from .export import export_markdown, export_json
+from .export import export_markdown, export_json, ExportError
 from .logger import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -43,15 +44,9 @@ class ChatApp:
         self.running = True
 
     def run(self):
-        """Main entry point."""
+        """Main entry point — interactive REPL."""
         self.console.print(self.ui.render_welcome())
-
-        # Initialize system message
-        self.messages = [{"role": "system", "content": self.config.system_prompt}]
-
-        # Create DB session
-        self.session_id = self.db.create_session(self.current_model)
-        self.db.add_message(self.session_id, "system", self.config.system_prompt)
+        self._init_session()
 
         self.console.print(
             f"  Model: [bold cyan]{self.current_model}[/bold cyan] | "
@@ -81,10 +76,49 @@ class ChatApp:
                     handler(args)
                 continue
 
+            # Unknown slash command — give feedback instead of sending to API
+            if text.startswith("/"):
+                self.console.print(
+                    f"  [yellow]Unknown command: {text.split()[0]}. Type /help for commands.[/yellow]\n"
+                )
+                continue
+
             # Regular message — send to API
             self._send_message(text)
 
         self._cleanup()
+
+    def run_inline(self, question: str):
+        """One-shot mode: send question, print response, exit."""
+        self._init_session()
+
+        self.messages.append({"role": "user", "content": question})
+        self.db.add_message(self.session_id, "user", question)
+
+        try:
+            response = self.stream_ctrl.stream_response(self.messages, self.current_model)
+            if response and self.config.show_cost:
+                self.console.print(
+                    self.ui.render_session_cost(response.cost.total_cost, response.usage.total_tokens)
+                )
+                self.console.print()
+        except StreamCancelled:
+            self.console.print("\n  [dim]Cancelled.[/dim]\n")
+            self._rollback_user_message()
+        except (AuthenticationError, RateLimitError, APIError) as e:
+            self.console.print(self.ui.render_error(str(e)))
+            self._rollback_user_message()
+        except Exception as e:
+            self.console.print(self.ui.render_error(f"Unexpected error: {e}"))
+            self._rollback_user_message()
+        finally:
+            self._cleanup()
+
+    def _init_session(self):
+        """Initialize system message and DB session."""
+        self.messages = [{"role": "system", "content": self.config.system_prompt}]
+        self.session_id = self.db.create_session(self.current_model)
+        self.db.add_message(self.session_id, "system", self.config.system_prompt)
 
     def _send_message(self, text: str):
         """Send user message, stream response, save to DB."""
@@ -122,6 +156,10 @@ class ChatApp:
                     )
                 self.console.print()
 
+        except StreamCancelled:
+            self.console.print("\n  [dim]Cancelled.[/dim]\n")
+            self._rollback_user_message()
+
         except AuthenticationError:
             self.console.print(
                 self.ui.render_error("Invalid API key. Check your PPLX_API_KEY in .env")
@@ -146,7 +184,8 @@ class ChatApp:
 
     def _rollback_user_message(self):
         """Remove failed user message from both memory and DB."""
-        self.messages.pop()
+        if self.messages and self.messages[-1].get("role") == "user":
+            self.messages.pop()
         self.db.delete_last_message(self.session_id)
 
     # --- Command Handlers ---
@@ -244,6 +283,11 @@ class ChatApp:
         except ValueError:
             self.console.print("  [yellow]Usage: /delete <session_id>[/yellow]\n")
             return
+
+        if sid == self.session_id:
+            self.console.print("  [yellow]Cannot delete the current session. Use /new first.[/yellow]\n")
+            return
+
         if self.db.delete_session(sid):
             self.console.print(f"  Deleted session [bold]#{sid}[/bold]\n")
         else:
@@ -263,15 +307,17 @@ class ChatApp:
             self.console.print("  [yellow]No session to export[/yellow]\n")
             return
 
-        if fmt in ("md", "markdown"):
-            path = export_markdown(session, self.config.export_dir)
-        elif fmt == "json":
-            path = export_json(session, self.config.export_dir)
-        else:
-            self.console.print(f"  [yellow]Unknown format: {fmt}. Use 'md' or 'json'[/yellow]\n")
-            return
-
-        self.console.print(f"  Exported to [bold]{path}[/bold]\n")
+        try:
+            if fmt in ("md", "markdown"):
+                path = export_markdown(session, self.config.export_dir)
+            elif fmt == "json":
+                path = export_json(session, self.config.export_dir)
+            else:
+                self.console.print(f"  [yellow]Unknown format: {fmt}. Use 'md' or 'json'[/yellow]\n")
+                return
+            self.console.print(f"  Exported to [bold]{path}[/bold]\n")
+        except ExportError as e:
+            self.console.print(self.ui.render_error(str(e)))
 
     def cmd_cost(self, args: str):
         self.console.print(self.ui.render_session_cost(self.session_cost, self.session_tokens))
@@ -333,11 +379,56 @@ class ChatApp:
                 f"  [yellow]Unknown option: {option}. Use: domain, recency, mode, clear[/yellow]\n"
             )
 
+    def cmd_temp(self, args: str):
+        """Set temperature (0.0 - 2.0)."""
+        if not args.strip():
+            self.console.print(f"  Temperature: [bold cyan]{self.config.temperature}[/bold cyan]\n")
+            return
+        try:
+            val = float(args.strip())
+            if not 0.0 <= val <= 2.0:
+                self.console.print("  [yellow]Temperature must be between 0.0 and 2.0[/yellow]\n")
+                return
+            self.config.temperature = val
+            self.console.print(f"  Temperature: [bold cyan]{val}[/bold cyan]\n")
+        except ValueError:
+            self.console.print("  [yellow]Usage: /temp <0.0-2.0>[/yellow]\n")
+
+    def cmd_top_p(self, args: str):
+        """Set top_p (0.0 - 1.0)."""
+        if not args.strip():
+            self.console.print(f"  Top-p: [bold cyan]{self.config.top_p}[/bold cyan]\n")
+            return
+        try:
+            val = float(args.strip())
+            if not 0.0 <= val <= 1.0:
+                self.console.print("  [yellow]Top-p must be between 0.0 and 1.0[/yellow]\n")
+                return
+            self.config.top_p = val
+            self.console.print(f"  Top-p: [bold cyan]{val}[/bold cyan]\n")
+        except ValueError:
+            self.console.print("  [yellow]Usage: /top_p <0.0-1.0>[/yellow]\n")
+
+    def cmd_maxtokens(self, args: str):
+        """Set max output tokens."""
+        if not args.strip():
+            self.console.print(f"  Max tokens: [bold cyan]{self.config.max_tokens}[/bold cyan]\n")
+            return
+        try:
+            val = int(args.strip())
+            if val < 1 or val > 128000:
+                self.console.print("  [yellow]Max tokens must be between 1 and 128000[/yellow]\n")
+                return
+            self.config.max_tokens = val
+            self.console.print(f"  Max tokens: [bold cyan]{val}[/bold cyan]\n")
+        except ValueError:
+            self.console.print("  [yellow]Usage: /maxtokens <number>[/yellow]\n")
+
     def cmd_system(self, args: str):
         if not args.strip():
-            self.console.print(
-                f"  Current: [dim]{self.config.system_prompt[:100]}...[/dim]\n"
-            )
+            prompt = self.config.system_prompt
+            suffix = "..." if len(prompt) > 100 else ""
+            self.console.print(f"  Current: [dim]{prompt[:100]}{suffix}[/dim]\n")
             return
         self.config.system_prompt = args.strip()
         self.messages[0] = {"role": "system", "content": args.strip()}
@@ -345,12 +436,15 @@ class ChatApp:
 
     def cmd_info(self, args: str):
         info = (
-            f"  Model:    [bold cyan]{self.current_model}[/bold cyan]\n"
-            f"  Session:  [bold]#{self.session_id}[/bold]\n"
-            f"  Cost:     [bold yellow]${self.session_cost:.6f}[/bold yellow]\n"
-            f"  Tokens:   {self.session_tokens:,}\n"
-            f"  Messages: {len(self.messages)}\n"
-            f"  Search:   {self.config.search_mode}"
+            f"  Model:      [bold cyan]{self.current_model}[/bold cyan]\n"
+            f"  Session:    [bold]#{self.session_id}[/bold]\n"
+            f"  Cost:       [bold yellow]${self.session_cost:.6f}[/bold yellow]\n"
+            f"  Tokens:     {self.session_tokens:,}\n"
+            f"  Messages:   {len(self.messages)}\n"
+            f"  Max tokens: {self.config.max_tokens}\n"
+            f"  Temperature: {self.config.temperature}\n"
+            f"  Top-p:      {self.config.top_p}\n"
+            f"  Search:     {self.config.search_mode}"
         )
         if self.config.search_domain_filter:
             info += f" | domains: {self.config.search_domain_filter}"

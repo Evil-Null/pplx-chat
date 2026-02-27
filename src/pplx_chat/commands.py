@@ -25,6 +25,9 @@ COMMANDS = [
     Command("/search", [], "Set search filters", "cmd_search", "<option> <value>"),
     Command("/system", [], "Change system prompt", "cmd_system", "<prompt>"),
     Command("/info", [], "Show current settings", "cmd_info"),
+    Command("/temp", [], "Set temperature", "cmd_temp", "[value]"),
+    Command("/top_p", [], "Set top-p sampling", "cmd_top_p", "[value]"),
+    Command("/maxtokens", [], "Set max output tokens", "cmd_maxtokens", "[value]"),
     Command("/new", ["/n"], "Start a new session", "cmd_new"),
     Command("/exit", ["/quit", "/q"], "Exit the application", "cmd_exit"),
 ]

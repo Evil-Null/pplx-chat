@@ -1,6 +1,9 @@
 # PPLX Chat Configuration
 # Copy to ~/.config/pplx-chat/config.yaml to customize
 
+# API base URL (default: https://api.perplexity.ai)
+# api_base_url: https://api.perplexity.ai
+
 # Default model: sonar, sonar-pro, sonar-reasoning-pro, sonar-deep-research
 default_model: sonar
 

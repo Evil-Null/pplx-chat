@@ -1,12 +1,45 @@
+import argparse
 import sys
+
+from . import __version__
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        prog="pplx",
+        description="Professional Perplexity AI terminal client",
+    )
+    parser.add_argument(
+        "-v", "--version", action="version", version=f"pplx-chat {__version__}"
+    )
+    parser.add_argument(
+        "-q", "--question", type=str, help="Ask a question and exit (inline mode)"
+    )
+    parser.add_argument(
+        "-m", "--model", type=str, help="Model to use"
+    )
+
+    args = parser.parse_args()
+
     try:
         from .app import ChatApp
 
         app = ChatApp()
-        app.run()
+
+        if args.model:
+            from .config import MODELS
+            if args.model in MODELS:
+                app.current_model = args.model
+            else:
+                valid = ", ".join(MODELS.keys())
+                print(f"  Unknown model '{args.model}'. Valid: {valid}", file=sys.stderr)
+                sys.exit(1)
+
+        if args.question:
+            app.run_inline(args.question)
+        else:
+            app.run()
+
     except KeyboardInterrupt:
         pass
     except Exception as e:

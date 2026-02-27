@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pplx-chat"
-version = "1.1.0"
+version = "1.2.0"
 description = "Professional Perplexity AI CLI chatbot"
 readme = "README.md"
 license = {text = "MIT"}
@@ -19,7 +19,6 @@ dependencies = [
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
     "pyyaml>=6.0",
-    "tenacity>=8.0",
 ]
 
 [project.scripts]

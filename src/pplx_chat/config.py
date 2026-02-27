@@ -1,8 +1,11 @@
+import logging
 from pathlib import Path
 
 import yaml
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 # Project root: pplx-chat/ (3 levels up from this file: config.py → pplx_chat/ → src/ → pplx-chat/)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -64,9 +67,6 @@ class AppConfig(BaseSettings):
     return_related_questions: bool = True
     return_images: bool = False
 
-    # Streaming
-    stream_mode: str = "full"
-
     # System prompt
     system_prompt: str = "Be helpful, accurate, and concise. Provide sources when possible."
 
@@ -94,6 +94,11 @@ def load_config() -> AppConfig:
     yaml_path = Path("~/.config/pplx-chat/config.yaml").expanduser()
     yaml_overrides = {}
     if yaml_path.exists():
-        with open(yaml_path, encoding="utf-8") as f:
-            yaml_overrides = yaml.safe_load(f) or {}
+        try:
+            with open(yaml_path, encoding="utf-8") as f:
+                yaml_overrides = yaml.safe_load(f) or {}
+        except yaml.YAMLError as e:
+            logger.warning("Invalid YAML config, using defaults: %s", e)
+        except OSError as e:
+            logger.warning("Cannot read config file, using defaults: %s", e)
     return AppConfig(**yaml_overrides)

@@ -4,7 +4,6 @@ from typing import Generator
 
 import httpx
 from httpx_sse import connect_sse
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from .config import AppConfig
 from .models import APIResponse, UsageInfo, CostInfo, SearchResult
@@ -82,6 +81,10 @@ class PerplexityClient:
                 # Check HTTP status before iterating
                 if event_source.response.status_code == 401:
                     raise AuthenticationError("Invalid API key", 401)
+                if event_source.response.status_code == 402:
+                    raise APIError(
+                        "Insufficient balance. Top up at perplexity.ai/settings/api", 402
+                    )
                 if event_source.response.status_code == 429:
                     raise RateLimitError("Rate limited. Wait and retry.", 429)
                 if event_source.response.status_code >= 400:
@@ -188,32 +191,6 @@ class PerplexityClient:
             model=data.get("model", ""),
             finish_reason=data.get("choices", [{}])[0].get("finish_reason", ""),
         )
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        retry=retry_if_exception_type((httpx.TransportError, httpx.TimeoutException)),
-        reraise=True,
-    )
-    def chat(self, messages: list[dict], model: str, **overrides) -> APIResponse:
-        """Non-streaming fallback with retries."""
-        payload = self._build_payload(messages, model, stream=False, **overrides)
-        response = self.client.post("/chat/completions", json=payload)
-        self._check_response(response)
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        return self._parse_final_response(data, content)
-
-    def _check_response(self, response: httpx.Response):
-        if response.status_code == 401:
-            raise AuthenticationError("Invalid API key", 401)
-        if response.status_code == 429:
-            raise RateLimitError("Rate limited. Wait and retry.", 429)
-        if response.status_code >= 400:
-            raise APIError(
-                f"API error {response.status_code}: {response.text}",
-                response.status_code,
-            )
 
     def close(self):
         self.client.close()

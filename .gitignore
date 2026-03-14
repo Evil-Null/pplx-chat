@@ -26,8 +26,7 @@ Thumbs.db
 
 # Internal dev files
 ROLE.md
-PPLX_FIX_PROMPT.md
-Pasted image.png
+*.internal.md
 
 # Logs
 *.log
